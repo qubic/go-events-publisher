@@ -1,2 +1,2 @@
 # go-events-publisher
-Publishes events into a kafka broker
+Publishes events to a kafka broker
