@@ -3,15 +3,25 @@
 .iml
 .run
 
+# embedded db
+
+store
+
 # Binaries for programs and plugins
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
 *.tar
 *.gz
 *.tgz
+go-events-publisher
+
+# log file
+*.log
+
+# temporary files
+*~
 
 # Test binary, built with `go test -c`
 *.test
@@ -25,3 +35,4 @@ go.work.sum
 
 # env file
 .env
+.env*local
