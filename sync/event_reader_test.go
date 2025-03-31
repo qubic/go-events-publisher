@@ -26,6 +26,19 @@ func (client *FakeEventClient) GetStatus(_ context.Context) (*client.EventStatus
 	return client.status, nil
 }
 
+type FakeEventProcessor struct {
+	processedCount int
+}
+
+func (p *FakeEventProcessor) ProcessTickEvents(_ context.Context, tickEvents *eventspb.TickEvents) error {
+	if tickEvents == nil {
+		p.processedCount++
+	} else {
+		p.processedCount += len(tickEvents.TxEvents)
+	}
+	return nil
+}
+
 func TestEventReader_sync(t *testing.T) {
 
 	intervals := map[uint32][]*client.ProcessedTickInterval{
@@ -41,18 +54,26 @@ func TestEventReader_sync(t *testing.T) {
 		},
 		events: map[uint32]*eventspb.TickEvents{},
 	}
-	reader := NewEventReader(eventClient, store)
+
+	eventProcessor := FakeEventProcessor{}
+	reader := NewEventReader(eventClient, &eventProcessor, store)
 	epoch, err := reader.sync(115, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))
 
+	assert.Equal(t, 4, eventProcessor.processedCount) // 4 ticks
+
 	epoch, err = reader.sync(120, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))
 
+	assert.Equal(t, 5, eventProcessor.processedCount) // 1 tick
+
 	epoch, err = reader.sync(120, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 123, int(epoch))
+
+	assert.Equal(t, 11, eventProcessor.processedCount) // 6 ticks
 
 	// clean up
 	err = reader.dataStore.deleteLastProcessedTicks(120, 124)
@@ -75,7 +96,7 @@ func TestEventReader_calculateTickRanges(t *testing.T) {
 		events: map[uint32]*eventspb.TickEvents{},
 	}
 
-	reader := NewEventReader(eventClient, store)
+	reader := NewEventReader(eventClient, &FakeEventProcessor{}, store)
 	start, end, epoch, err := reader.calculateTickRange(context.Background(), 120)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))

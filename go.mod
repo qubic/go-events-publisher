@@ -11,6 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/qubic/go-events v0.4.0
 	github.com/stretchr/testify v1.10.0
+	github.com/twmb/franz-go v1.18.1
 	google.golang.org/grpc v1.71.0
 )
 
@@ -32,12 +33,14 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.21.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.63.0 // indirect
 	github.com/prometheus/procfs v0.16.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect

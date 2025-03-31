@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/qubic/go-events-publisher/client"
 	"github.com/qubic/go-events-publisher/sync"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"log"
 	"os"
 	"os/signal"
@@ -28,9 +29,12 @@ func run() error {
 		Client struct {
 			EventApiUrl string `conf:"required"`
 		}
+		Broker struct {
+			BootstrapServers string `conf:"default:localhost:9092"`
+		}
 		Sync struct {
 			InternalStoreFolder string `conf:"default:store"`
-			StartEpoch          uint32 `conf:"default:145"`
+			StartEpoch          uint32 `conf:"default:153"`
 		}
 	}
 
@@ -71,7 +75,17 @@ func run() error {
 		return errors.Wrap(err, "creating db")
 	}
 
-	eventReader := sync.NewEventReader(eventClient, store)
+	kcl, err := kgo.NewClient(
+		kgo.SeedBrokers(cfg.Broker.BootstrapServers),
+		kgo.AllowAutoTopicCreation(),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer kcl.Close()
+
+	eventProcessor := sync.NewEventPublisher(kcl)
+	eventReader := sync.NewEventReader(eventClient, eventProcessor, store)
 	go eventReader.SyncInLoop(cfg.Sync.StartEpoch)
 
 	shutdown := make(chan os.Signal, 1)
