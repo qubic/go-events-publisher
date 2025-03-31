@@ -15,6 +15,7 @@ const lastProcessedTickPerEpochKey = 0x00
 type DataStore interface {
 	SetLastProcessedTick(epoch, tick uint32) error
 	GetLastProcessedTick(epoch uint32) (tick uint32, err error)
+	deleteLastProcessedTicks(epochFrom, epochToExcl uint32) error
 }
 
 type PebbleStore struct {
@@ -62,6 +63,20 @@ func (ps *PebbleStore) GetLastProcessedTick(epoch uint32) (tick uint32, err erro
 	tick = binary.BigEndian.Uint32(value)
 
 	return tick, nil
+}
+
+func (ps *PebbleStore) deleteLastProcessedTicks(epochFrom, epochToExcl uint32) error {
+	keyFrom := []byte{lastProcessedTickPerEpochKey}
+	keyFrom = binary.BigEndian.AppendUint32(keyFrom, epochFrom)
+
+	keyTo := []byte{lastProcessedTickPerEpochKey}
+	keyTo = binary.BigEndian.AppendUint32(keyTo, epochToExcl)
+
+	err := ps.db.DeleteRange(keyFrom, keyTo, pebble.Sync)
+	if err != nil {
+		return fmt.Errorf("deleting epoch range [%d-%d]: %v", epochFrom, epochToExcl, err)
+	}
+	return nil
 }
 
 func (ps *PebbleStore) Close() error {

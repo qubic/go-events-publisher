@@ -51,7 +51,7 @@ func (r *EventReader) sync(startEpoch uint32, count uint64) (uint32, error) {
 		return startEpoch, errors.Wrap(err, "Error calculating tick range")
 	}
 
-	if start > end {
+	if start > end || start == 0 || end == 0 || epoch == 0 {
 		log.Printf("No ticks to process. Start: %d, end %d, epoch: %d", start, end, epoch)
 	} else { // if start == end then process one tick
 		log.Printf("Processing ticks from %d to %d for epoch %d", start, end, epoch)
@@ -74,21 +74,20 @@ func (r *EventReader) calculateTickRange(ctx context.Context, startEpoch uint32)
 	}
 
 	// find first tick that is not stored yet
-	epoch := min(startEpoch, eventStatus.Epoch)
+	searchEpoch := min(startEpoch, eventStatus.Epoch)
 
 	// find first tick interval to process
-	for epoch < eventStatus.Epoch {
-		log.Printf("Syncing epoch: %d", epoch)
-		tickIntervals := eventStatus.Intervals[epoch]
+	for searchEpoch <= eventStatus.Epoch {
+		tickIntervals := eventStatus.Intervals[searchEpoch]
 		if tickIntervals == nil {
 			// nothing to sync
-			epoch++
+			searchEpoch++
 
 		} else {
 
-			lastProcessedTick, err := r.dataStore.GetLastProcessedTick(epoch)
+			lastProcessedTick, err := r.dataStore.GetLastProcessedTick(searchEpoch)
 			if err != nil && !errors.Is(err, ErrNotFound) {
-				return 0, 0, epoch, errors.Wrap(err, "getting last processed tick")
+				return 0, 0, searchEpoch, errors.Wrap(err, "getting last processed tick")
 			}
 
 			for _, tickInterval := range tickIntervals {
@@ -96,16 +95,16 @@ func (r *EventReader) calculateTickRange(ctx context.Context, startEpoch uint32)
 					// ok process
 					start := max(tickInterval.From, lastProcessedTick+1)
 					end := tickInterval.To
-					return start, end, epoch, nil
+					return start, end, searchEpoch, nil
 				}
 			}
 			// everything synced in this epoch
-			log.Printf("No unprocessed tick interval found in epoch %d", epoch)
-			epoch++
+			searchEpoch++
 
 		}
 	}
 
-	return eventStatus.Tick, eventStatus.Tick, epoch, nil
+	// no delta found do not sync
+	return 0, 0, 0, nil
 
 }
