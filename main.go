@@ -77,7 +77,6 @@ func run() error {
 
 	kcl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Broker.BootstrapServers),
-		kgo.AllowAutoTopicCreation(),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -85,7 +84,7 @@ func run() error {
 	defer kcl.Close()
 
 	eventProcessor := sync.NewEventPublisher(kcl)
-	eventReader := sync.NewEventReader(eventClient, eventProcessor, store)
+	eventReader := sync.NewEventProcessor(eventClient, eventProcessor, store)
 	go eventReader.SyncInLoop(cfg.Sync.StartEpoch)
 
 	shutdown := make(chan os.Signal, 1)

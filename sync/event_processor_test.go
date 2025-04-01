@@ -30,13 +30,13 @@ type FakeEventProcessor struct {
 	processedCount int
 }
 
-func (p *FakeEventProcessor) ProcessTickEvents(_ context.Context, tickEvents *eventspb.TickEvents) error {
+func (p *FakeEventProcessor) ProcessTickEvents(_ context.Context, tickEvents *eventspb.TickEvents) (int, error) {
 	if tickEvents == nil {
 		p.processedCount++
 	} else {
 		p.processedCount += len(tickEvents.TxEvents)
 	}
-	return nil
+	return p.processedCount, nil
 }
 
 func TestEventReader_sync(t *testing.T) {
@@ -56,7 +56,7 @@ func TestEventReader_sync(t *testing.T) {
 	}
 
 	eventProcessor := FakeEventProcessor{}
-	reader := NewEventReader(eventClient, &eventProcessor, store)
+	reader := NewEventProcessor(eventClient, &eventProcessor, store)
 	epoch, err := reader.sync(115, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))
@@ -96,7 +96,7 @@ func TestEventReader_calculateTickRanges(t *testing.T) {
 		events: map[uint32]*eventspb.TickEvents{},
 	}
 
-	reader := NewEventReader(eventClient, &FakeEventProcessor{}, store)
+	reader := NewEventProcessor(eventClient, &FakeEventProcessor{}, store)
 	start, end, epoch, err := reader.calculateTickRange(context.Background(), 120)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))

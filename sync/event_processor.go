@@ -2,88 +2,143 @@ package sync
 
 import (
 	"context"
-	"encoding/binary"
-	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
+	"github.com/qubic/go-events-publisher/client"
 	eventspb "github.com/qubic/go-events/proto"
-	"github.com/twmb/franz-go/pkg/kgo"
 	"log"
+	"time"
 )
 
-type Event struct {
-	Epoch           uint32
-	Tick            uint32
-	EventId         uint64
-	EventDigest     uint64
-	TransactionHash string
-	EventType       uint32
-	EventSize       uint32
-	EventData       string
+type Client interface {
+	GetEvents(ctx context.Context, tickNumber uint32) (*eventspb.TickEvents, error)
+	GetStatus(ctx context.Context) (*client.EventStatus, error)
+}
+type EventProcessor struct {
+	eventClient    Client
+	eventPublisher Publisher
+	dataStore      DataStore
 }
 
-type EventProcessor interface {
-	ProcessTickEvents(ctx context.Context, tickEvents *eventspb.TickEvents) error
-}
-
-type KafkaClient interface {
-	ProduceSync(ctx context.Context, rs ...*kgo.Record) kgo.ProduceResults
-}
-
-type EventPublisher struct {
-	kafkaClient KafkaClient
-}
-
-func NewEventPublisher(client KafkaClient) *EventPublisher {
-	return &EventPublisher{
-		kafkaClient: client,
+func NewEventProcessor(client Client, publisher Publisher, store DataStore) *EventProcessor {
+	es := EventProcessor{
+		eventClient:    client,
+		eventPublisher: publisher,
+		dataStore:      store,
 	}
+	return &es
 }
 
-func (ep *EventPublisher) ProcessTickEvents(ctx context.Context, tickEvents *eventspb.TickEvents) error {
-	var events []*Event
-	var eventCount int
-	for _, transactionEvents := range tickEvents.TxEvents {
-		eventCount += len(transactionEvents.Events)
-		transactionHash := transactionEvents.TxId
-		log.Printf("Processing events for transaction [%s].", transactionHash)
-
-		for _, e := range transactionEvents.Events {
-			event := Event{
-				Epoch:           e.Header.Epoch,
-				Tick:            e.Header.Tick,
-				EventId:         e.Header.EventId,
-				EventDigest:     e.Header.EventDigest,
-				TransactionHash: transactionHash,
-				EventType:       e.EventType,
-				EventSize:       e.EventSize,
-				EventData:       e.EventData,
-			}
-			log.Printf("Processing event [%d] with type %d", event.EventId, event.EventType)
-			events = append(events, &event)
-		}
-
-	}
-
-	if len(events) > 0 {
-
-		payload, err := json.Marshal(events)
+func (r *EventProcessor) SyncInLoop(startEpoch uint32) {
+	var count uint64
+	epoch := startEpoch
+	loopTick := time.Tick(time.Second * 1)
+	for range loopTick {
+		latestProcessedEpoch, err := r.sync(epoch, count)
 		if err != nil {
-			return errors.Wrap(err, "failed to marshal events")
+			log.Printf("sync run failed: %v", err)
 		}
+		epoch = latestProcessedEpoch
+		count++
+		time.Sleep(time.Second)
+	}
+}
 
-		key := make([]byte, 4)
-		binary.LittleEndian.PutUint32(key, tickEvents.Tick)
-		record := &kgo.Record{Key: key, Topic: "qubic-events", Value: payload}
+func (r *EventProcessor) sync(startEpoch uint32, count uint64) (uint32, error) {
+	log.Printf("Sync run: %d", count)
+	ctx := context.Background()
 
-		// TODO change this to async later
-		if err = ep.kafkaClient.ProduceSync(ctx, record).FirstErr(); err != nil {
-			fmt.Printf("record had a produce error while synchronously producing: %v\n", err)
-		}
-		log.Printf("Processed: tick [%d] with [%d] transactions and [%d] events.", tickEvents.Tick, len(tickEvents.TxEvents), eventCount)
-	} else {
-		log.Printf("No events in tick [%d].", tickEvents.Tick)
+	start, end, epoch, err := r.calculateTickRange(ctx, startEpoch)
+	if err != nil {
+		return startEpoch, errors.Wrap(err, "Error calculating tick range")
 	}
 
+	if start > end || start == 0 || end == 0 || epoch == 0 {
+		log.Printf("No ticks to process. Start: %d, end %d, epoch: %d", start, end, epoch)
+	} else { // if start == end then process one tick
+		log.Printf("Processing ticks from %d to %d for epoch %d", start, end, epoch)
+		err = r.processTickEventsRange(ctx, epoch, start, end+1) // end exclusive
+		if err != nil {
+			return startEpoch, errors.Wrapf(err, "processing tick range from [%d] to [%d]", start, end)
+		}
+	}
+
+	return epoch, nil
+}
+
+func (r *EventProcessor) processTickEventsRange(ctx context.Context, epoch, from, toExcl uint32) error {
+	for tick := from; tick < toExcl; tick++ {
+		err := r.processTickEvents(ctx, tick)
+		if err != nil {
+			return errors.Wrapf(err, "processing tick [%d]", tick)
+		}
+		err = r.dataStore.SetLastProcessedTick(epoch, tick)
+		if err != nil {
+			return errors.Wrapf(err, "setting last processed tick [%d]", tick)
+		}
+	}
 	return nil
+}
+
+func (r *EventProcessor) processTickEvents(ctx context.Context, tick uint32) error {
+
+	log.Printf("Processing tick [%d].", tick)
+
+	tickEvents, err := r.eventClient.GetEvents(ctx, tick)
+	if err != nil {
+		return errors.Wrap(err, "getting events")
+	}
+
+	count, err := r.eventPublisher.ProcessTickEvents(ctx, tickEvents)
+	if err != nil {
+		return errors.Wrapf(err, "processing events")
+	}
+
+	if count > 0 {
+		log.Printf("Processed [%d] events.", count)
+	}
+	return nil
+}
+
+func (r *EventProcessor) calculateTickRange(ctx context.Context, startEpoch uint32) (uint32, uint32, uint32, error) {
+
+	// get status from event service
+	eventStatus, err := r.eventClient.GetStatus(ctx)
+	if err != nil {
+		return 0, 0, startEpoch, errors.Wrap(err, "calling event service")
+	}
+
+	// find first tick that is not stored yet
+	searchEpoch := min(startEpoch, eventStatus.Epoch)
+
+	// find first tick interval to process
+	for searchEpoch <= eventStatus.Epoch {
+		tickIntervals := eventStatus.Intervals[searchEpoch]
+		if tickIntervals == nil {
+			// nothing to sync
+			searchEpoch++
+
+		} else {
+
+			lastProcessedTick, err := r.dataStore.GetLastProcessedTick(searchEpoch)
+			if err != nil && !errors.Is(err, ErrNotFound) {
+				return 0, 0, searchEpoch, errors.Wrap(err, "getting last processed tick")
+			}
+
+			for _, tickInterval := range tickIntervals {
+				if tickInterval.To > lastProcessedTick {
+					// ok process
+					start := max(tickInterval.From, lastProcessedTick+1)
+					end := tickInterval.To
+					return start, end, searchEpoch, nil
+				}
+			}
+			// everything synced in this epoch
+			searchEpoch++
+
+		}
+	}
+
+	// no delta found do not sync
+	return 0, 0, 0, nil
+
 }
