@@ -39,7 +39,7 @@ func (p *FakeEventProcessor) ProcessTickEvents(_ context.Context, tickEvents *ev
 	return p.processedCount, nil
 }
 
-func TestEventReader_sync(t *testing.T) {
+func TestEventProcessor_sync(t *testing.T) {
 
 	intervals := map[uint32][]*client.ProcessedTickInterval{
 		120: {{From: 1230, To: 1233}, {From: 1234, To: 1234}},
@@ -80,7 +80,7 @@ func TestEventReader_sync(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestEventReader_calculateTickRanges(t *testing.T) {
+func TestEventProcessor_calculateTickRanges(t *testing.T) {
 	intervals := map[uint32][]*client.ProcessedTickInterval{
 		119: {{From: 1, To: 100}},
 		120: {{From: 1230, To: 1233}, {From: 1234, To: 1234}},
@@ -136,6 +136,7 @@ func TestEventReader_calculateTickRanges(t *testing.T) {
 
 }
 
+//goland:noinspection GoUnhandledErrorResult
 func TestMain(m *testing.M) {
 
 	// we could use a fake db but in memory works, too
