@@ -69,7 +69,7 @@ func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *event
 			ep.kcl.Produce(nil, record, func(_ *kgo.Record, err error) {
 				defer wg.Done()
 				if err != nil {
-					sendError := errors.Wrapf(err, "sending message for event [%d] of transaction [%s].", eventId, transactionHash)
+					sendError := errors.Wrapf(err, "sending message for event [%d] of transaction [%s]", eventId, transactionHash)
 					log.Printf("Error %v", sendError)
 					errs = append(errs, sendError)
 				} else {
