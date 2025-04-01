@@ -88,13 +88,15 @@ func (r *EventProcessor) processTickEvents(ctx context.Context, tick uint32) err
 		return errors.Wrap(err, "getting events")
 	}
 
+	start := time.Now().UnixMilli()
 	count, err := r.eventPublisher.ProcessTickEvents(ctx, tickEvents)
 	if err != nil {
 		return errors.Wrapf(err, "processing events")
 	}
-
+	end := time.Now().UnixMilli()
 	if count > 0 {
-		log.Printf("Processed [%d] events.", count)
+		total := end - start
+		log.Printf("Processed [%d] events in %d ms. (%d ms/event)", count, total, total/int64(count))
 	}
 	return nil
 }

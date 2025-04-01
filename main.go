@@ -27,7 +27,7 @@ func run() error {
 
 	var cfg struct {
 		Client struct {
-			EventApiUrl string `conf:"required"`
+			EventApiUrl string `conf:"default:localhost:8003"`
 		}
 		Broker struct {
 			BootstrapServers string `conf:"default:localhost:9092"`
@@ -77,6 +77,7 @@ func run() error {
 
 	kcl, err := kgo.NewClient(
 		kgo.SeedBrokers(cfg.Broker.BootstrapServers),
+		kgo.ProducerBatchCompression(kgo.ZstdCompression()),
 	)
 	if err != nil {
 		log.Fatal(err)
