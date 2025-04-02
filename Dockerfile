@@ -1,4 +1,4 @@
-FROM golang:1.23 AS builder
+FROM golang:1.24 AS builder
 ENV CGO_ENABLED=0
 
 WORKDIR /src/go-events-publisher
@@ -8,7 +8,7 @@ RUN go mod tidy
 WORKDIR /src/go-events-publisher
 RUN go build
 
-FROM ubuntu:latest
+FROM alpine:latest
 LABEL authors="mio@qubic.org"
 
 # copy executable from build stage
