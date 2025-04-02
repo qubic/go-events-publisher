@@ -13,6 +13,7 @@ require (
 	github.com/qubic/go-qubic v0.3.0
 	github.com/stretchr/testify v1.10.0
 	github.com/twmb/franz-go v1.18.1
+	github.com/twmb/franz-go/plugin/kprom v1.1.0
 	google.golang.org/grpc v1.71.0
 )
 

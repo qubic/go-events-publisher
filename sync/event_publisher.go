@@ -59,7 +59,7 @@ func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *event
 			eventId := e.Header.EventId
 			record, err := createEventRecord(e, tick, transactionHash)
 			if err != nil {
-				createError := errors.Wrapf(err, "creating message for event [%d] of transaction [%s]", eventId, transactionHash)
+				createError := errors.Wrapf(err, "creating message for tick [%d] transaction [%s] event [%d]", tick, transactionHash, eventId)
 				log.Printf("Error %v", createError)
 				errs = append(errs, createError)
 				break
@@ -69,7 +69,7 @@ func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *event
 			ep.kcl.Produce(nil, record, func(_ *kgo.Record, err error) {
 				defer wg.Done()
 				if err != nil {
-					sendError := errors.Wrapf(err, "sending message for event [%d] of transaction [%s]", eventId, transactionHash)
+					sendError := errors.Wrapf(err, "sending message for tick [%d] transaction [%s] event [%d]", tick, transactionHash, eventId)
 					log.Printf("Error %v", sendError)
 					errs = append(errs, sendError)
 				} else {
@@ -80,15 +80,17 @@ func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *event
 			// here indefinitely until the network is back up. No error will be produced in this case.
 		}
 
+		// in case we encounter an error don't proceed with next transaction
+		if len(errs) > 0 {
+			log.Printf("Aborting sending events for tick [%d] because of error(s).", tick)
+			break
+		}
+
 	}
 
 	// wait at end of tick (performance vs. error handling)
 	wg.Wait()
 	if len(errs) > 0 {
-		log.Printf("Error summary for tick [%d]:", tick)
-		for _, err := range errs {
-			log.Printf("Error %v", err)
-		}
 		return sentEvents, errors.Errorf("[%d] error(s) sending messages for tick [%d]", len(errs), tick)
 	}
 
@@ -121,7 +123,7 @@ func createEventRecord(sourceEvent *eventspb.Event, tick uint32, transactionHash
 	}
 	key := make([]byte, 4)
 	binary.LittleEndian.PutUint32(key, tick)
-	record := &kgo.Record{Key: key, Topic: "qubic-events", Value: payload}
+	record := &kgo.Record{Key: key, Value: payload}
 	return record, nil
 }
 

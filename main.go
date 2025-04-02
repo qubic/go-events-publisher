@@ -7,7 +7,9 @@ import (
 	"github.com/qubic/go-events-publisher/client"
 	"github.com/qubic/go-events-publisher/sync"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/plugin/kprom"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,6 +33,9 @@ func run() error {
 		}
 		Broker struct {
 			BootstrapServers string `conf:"default:localhost:9092"`
+			MetricsPort      int    `conf:"default:9999"`
+			MetricsNamespace string `conf:"default:qubic-events"`
+			ProduceTopic     string `conf:"default:qubic-events"`
 		}
 		Sync struct {
 			InternalStoreFolder string `conf:"default:store"`
@@ -75,7 +80,10 @@ func run() error {
 		return errors.Wrap(err, "creating db")
 	}
 
+	m := kprom.NewMetrics(cfg.Broker.MetricsNamespace)
 	kcl, err := kgo.NewClient(
+		kgo.WithHooks(m),
+		kgo.DefaultProduceTopic(cfg.Broker.ProduceTopic),
 		kgo.SeedBrokers(cfg.Broker.BootstrapServers),
 		kgo.ProducerBatchCompression(kgo.ZstdCompression()),
 	)
@@ -90,6 +98,11 @@ func run() error {
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		http.Handle("/metrics", m.Handler())
+		log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%d", cfg.Broker.MetricsPort), nil))
+	}()
 
 	log.Println("main: Service started.")
 

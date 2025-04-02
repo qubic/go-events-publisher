@@ -10,14 +10,12 @@ import (
 )
 
 type FakeKafkaClient struct {
-	produceErr   error
-	sentMessages int
+	produceErr        error
+	processedMessages int
 }
 
 func (fkc *FakeKafkaClient) Produce(_ context.Context, r *kgo.Record, promise func(*kgo.Record, error)) {
-	if fkc.produceErr == nil {
-		fkc.sentMessages++
-	}
+	fkc.processedMessages++
 	promise(r, fkc.produceErr)
 }
 
@@ -57,7 +55,7 @@ func TestEventPublisher_ProcessTickEvents(t *testing.T) {
 	count, err := pub.ProcessTickEvents(context.Background(), &tickEvents)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
-	assert.Equal(t, 5, kafkaClient.sentMessages)
+	assert.Equal(t, 5, kafkaClient.processedMessages)
 
 }
 
@@ -71,25 +69,33 @@ func TestEventPublisher_ProcessTickEvents_GivenError_ThenReturn(t *testing.T) {
 		kcl: kafkaClient,
 	}
 
-	transactionEvents := eventspb.TransactionEvents{
-		TxId: "tx-id",
+	transactionEvents1 := eventspb.TransactionEvents{
+		TxId: "tx-id-1",
 		Events: []*eventspb.Event{
-			{Header: &eventspb.Event_Header{}},
-			{Header: &eventspb.Event_Header{}},
+			{Header: &eventspb.Event_Header{EventId: 1}}, // errors
+			{Header: &eventspb.Event_Header{EventId: 2}}, // errors. will be sent too because of async processing
+		},
+	}
+
+	transactionEvents2 := eventspb.TransactionEvents{
+		TxId: "tx-id-2",
+		Events: []*eventspb.Event{
+			{Header: &eventspb.Event_Header{EventId: 3}}, // won't be processed
 		},
 	}
 
 	tickEvents := eventspb.TickEvents{
 		Tick: 12345,
 		TxEvents: []*eventspb.TransactionEvents{
-			&transactionEvents,
+			&transactionEvents1,
+			&transactionEvents2,
 		},
 	}
 
 	count, err := pub.ProcessTickEvents(context.Background(), &tickEvents)
 	assert.Error(t, err)
 	assert.Equal(t, 0, count)
-	assert.Equal(t, 0, kafkaClient.sentMessages)
+	assert.Equal(t, 2, kafkaClient.processedMessages) // abort after processing first tx
 
 }
 
