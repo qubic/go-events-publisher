@@ -5,6 +5,7 @@ import (
 	"github.com/ardanlabs/conf"
 	"github.com/pkg/errors"
 	"github.com/qubic/go-events-publisher/client"
+	"github.com/qubic/go-events-publisher/status"
 	"github.com/qubic/go-events-publisher/sync"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/plugin/kprom"
@@ -40,6 +41,7 @@ func run() error {
 		Sync struct {
 			InternalStoreFolder string `conf:"default:store"`
 			StartEpoch          uint32 `conf:"default:153"`
+			Enabled             bool   `conf:"default:true"`
 		}
 	}
 
@@ -94,14 +96,21 @@ func run() error {
 
 	eventProcessor := sync.NewEventPublisher(kcl)
 	eventReader := sync.NewEventProcessor(eventClient, eventProcessor, store)
-	go eventReader.SyncInLoop(cfg.Sync.StartEpoch)
+	if cfg.Sync.Enabled {
+		go eventReader.SyncInLoop(cfg.Sync.StartEpoch)
+	} else {
+		log.Println("main: Event processing disabled")
+	}
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
+	// metrics endpoint
 	go func() {
+		log.Printf("main: Starting status and metrics endpoint on port [%d].", cfg.Broker.MetricsPort)
+		http.Handle("/status", &status.Handler{})
 		http.Handle("/metrics", m.Handler())
-		log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%d", cfg.Broker.MetricsPort), nil))
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.Broker.MetricsPort), nil))
 	}()
 
 	log.Println("main: Service started.")
