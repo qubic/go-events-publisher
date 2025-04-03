@@ -37,7 +37,7 @@ func run() error {
 		Broker struct {
 			BootstrapServers string `conf:"default:localhost:9092"`
 			MetricsPort      int    `conf:"default:9999"`
-			MetricsNamespace string `conf:"default:qubic-events"`
+			MetricsNamespace string `conf:"default:qubic-kafka"`
 			ProduceTopic     string `conf:"default:qubic-events"`
 		}
 		Sync struct {
