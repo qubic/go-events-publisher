@@ -12,7 +12,7 @@ import (
 )
 
 var store *PebbleStore
-var metrics = NewSyncMetrics("foo")
+var metrics = NewMetrics("foo")
 
 type FakeEventClient struct {
 	status *client.EventStatus

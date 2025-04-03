@@ -15,7 +15,7 @@ type Metrics struct {
 	processedTicksCount  prometheus.Counter
 }
 
-func NewSyncMetrics(namespace string) *Metrics {
+func NewMetrics(namespace string) *Metrics {
 	m := Metrics{
 		// metrics for epoch, tick, event processing
 		processedTickGauge: promauto.NewGauge(prometheus.GaugeOpts{
