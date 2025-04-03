@@ -12,6 +12,7 @@ import (
 )
 
 var store *PebbleStore
+var metrics = NewSyncMetrics("foo")
 
 type FakeEventClient struct {
 	status *client.EventStatus
@@ -56,7 +57,7 @@ func TestEventProcessor_sync(t *testing.T) {
 	}
 
 	eventProcessor := FakeEventProcessor{}
-	reader := NewEventProcessor(eventClient, &eventProcessor, store)
+	reader := NewEventProcessor(eventClient, &eventProcessor, store, metrics)
 	epoch, err := reader.sync(115, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))
@@ -96,7 +97,7 @@ func TestEventProcessor_calculateTickRanges(t *testing.T) {
 		events: map[uint32]*eventspb.TickEvents{},
 	}
 
-	reader := NewEventProcessor(eventClient, &FakeEventProcessor{}, store)
+	reader := NewEventProcessor(eventClient, &FakeEventProcessor{}, store, metrics)
 	start, end, epoch, err := reader.calculateTickRange(context.Background(), 120)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/ardanlabs/conf"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/qubic/go-events-publisher/client"
 	"github.com/qubic/go-events-publisher/status"
 	"github.com/qubic/go-events-publisher/sync"
@@ -82,7 +84,9 @@ func run() error {
 		return errors.Wrap(err, "creating db")
 	}
 
-	m := kprom.NewMetrics(cfg.Broker.MetricsNamespace)
+	m := kprom.NewMetrics(cfg.Broker.MetricsNamespace,
+		kprom.Registerer(prometheus.DefaultRegisterer),
+		kprom.Gatherer(prometheus.DefaultGatherer))
 	kcl, err := kgo.NewClient(
 		kgo.WithHooks(m),
 		kgo.DefaultProduceTopic(cfg.Broker.ProduceTopic),
@@ -95,7 +99,7 @@ func run() error {
 	defer kcl.Close()
 
 	eventProcessor := sync.NewEventPublisher(kcl)
-	eventReader := sync.NewEventProcessor(eventClient, eventProcessor, store)
+	eventReader := sync.NewEventProcessor(eventClient, eventProcessor, store, sync.NewSyncMetrics(cfg.Broker.MetricsNamespace))
 	if cfg.Sync.Enabled {
 		go eventReader.SyncInLoop(cfg.Sync.StartEpoch)
 	} else {
@@ -109,7 +113,7 @@ func run() error {
 	go func() {
 		log.Printf("main: Starting status and metrics endpoint on port [%d].", cfg.Broker.MetricsPort)
 		http.Handle("/status", &status.Handler{})
-		http.Handle("/metrics", m.Handler())
+		http.Handle("/metrics", promhttp.Handler())
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.Broker.MetricsPort), nil))
 	}()
 

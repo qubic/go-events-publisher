@@ -17,13 +17,15 @@ type EventProcessor struct {
 	eventClient    Client
 	eventPublisher Publisher
 	dataStore      DataStore
+	syncMetrics    *Metrics
 }
 
-func NewEventProcessor(client Client, publisher Publisher, store DataStore) *EventProcessor {
+func NewEventProcessor(client Client, publisher Publisher, store DataStore, metrics *Metrics) *EventProcessor {
 	es := EventProcessor{
 		eventClient:    client,
 		eventPublisher: publisher,
 		dataStore:      store,
+		syncMetrics:    metrics,
 	}
 	return &es
 }
@@ -71,6 +73,8 @@ func (r *EventProcessor) processTickEventsRange(ctx context.Context, epoch, from
 		if err != nil {
 			return errors.Wrapf(err, "processing tick [%d]", tick)
 		}
+		r.syncMetrics.SetProcessedTick(epoch, tick)
+		r.syncMetrics.IncProcessedTicks()
 		err = r.dataStore.SetLastProcessedTick(epoch, tick)
 		if err != nil {
 			return errors.Wrapf(err, "setting last processed tick [%d]", tick)
@@ -94,8 +98,10 @@ func (r *EventProcessor) processTickEvents(ctx context.Context, tick uint32) err
 	if err != nil {
 		return errors.Wrapf(err, "processing events")
 	}
-	end := time.Now().UnixMilli()
+
 	if count > 0 {
+		r.syncMetrics.AddProcessedMessages(count)
+		end := time.Now().UnixMilli()
 		total := end - beforeCall
 		processing := end - startProcessing
 		log.Printf("Processed [%d] events in %d ms (publishing: %d ms => ~%d ms/event)", count, total, processing, processing/int64(count))
@@ -110,6 +116,7 @@ func (r *EventProcessor) calculateTickRange(ctx context.Context, startEpoch uint
 	if err != nil {
 		return 0, 0, startEpoch, errors.Wrap(err, "calling event service")
 	}
+	r.syncMetrics.SetSourceTick(eventStatus.Epoch, eventStatus.Tick)
 
 	// find first tick that is not stored yet
 	searchEpoch := min(startEpoch, eventStatus.Epoch)
