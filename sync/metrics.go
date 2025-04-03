@@ -7,12 +7,12 @@ import (
 )
 
 type Metrics struct {
-	sourceTickGauge      prometheus.Gauge
-	sourceEpochGauge     prometheus.Gauge
-	processedTickGauge   prometheus.Gauge
-	processingEpochGauge prometheus.Gauge
-	producedMessageCount prometheus.Counter
-	processedTicksCount  prometheus.Counter
+	sourceTickGauge       prometheus.Gauge
+	sourceEpochGauge      prometheus.Gauge
+	processedTickGauge    prometheus.Gauge
+	processingEpochGauge  prometheus.Gauge
+	processedMessageCount prometheus.Counter
+	processedTicksCount   prometheus.Counter
 }
 
 func NewMetrics(namespace string) *Metrics {
@@ -30,9 +30,9 @@ func NewMetrics(namespace string) *Metrics {
 			Name: fmt.Sprintf("%s_processed_tick_count", namespace),
 			Help: "The total number of processed ticks",
 		}),
-		producedMessageCount: promauto.NewCounter(prometheus.CounterOpts{
-			Name: fmt.Sprintf("%s_produced_message_count", namespace),
-			Help: "The total number of produced message records",
+		processedMessageCount: promauto.NewCounter(prometheus.CounterOpts{
+			Name: fmt.Sprintf("%s_processed_message_count", namespace),
+			Help: "The total number of processed message records",
 		}),
 		// metrics for comparison to event source
 		sourceTickGauge: promauto.NewGauge(prometheus.GaugeOpts{
@@ -57,7 +57,7 @@ func (metrics *Metrics) IncProcessedTicks() {
 }
 
 func (metrics *Metrics) AddProcessedMessages(count int) {
-	metrics.producedMessageCount.Add(float64(count))
+	metrics.processedMessageCount.Add(float64(count))
 }
 
 func (metrics *Metrics) SetSourceTick(epoch uint32, tick uint32) {
