@@ -58,19 +58,19 @@ func TestEventProcessor_sync(t *testing.T) {
 
 	eventProcessor := FakeEventProcessor{}
 	reader := NewEventProcessor(eventClient, &eventProcessor, store, metrics)
-	epoch, err := reader.sync(115, 1)
+	epoch, err := reader.sync(115)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))
 
 	assert.Equal(t, 4, eventProcessor.processedCount) // 4 ticks
 
-	epoch, err = reader.sync(120, 1)
+	epoch, err = reader.sync(120)
 	assert.NoError(t, err)
 	assert.Equal(t, 120, int(epoch))
 
 	assert.Equal(t, 5, eventProcessor.processedCount) // 1 tick
 
-	epoch, err = reader.sync(120, 1)
+	epoch, err = reader.sync(120)
 	assert.NoError(t, err)
 	assert.Equal(t, 123, int(epoch))
 

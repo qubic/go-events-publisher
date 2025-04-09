@@ -31,22 +31,19 @@ func NewEventProcessor(client Client, publisher Publisher, store DataStore, metr
 }
 
 func (r *EventProcessor) SyncInLoop(startEpoch uint32) {
-	var count uint64
 	epoch := startEpoch
 	loopTick := time.Tick(time.Second * 1)
 	for range loopTick {
-		latestProcessedEpoch, err := r.sync(epoch, count)
+		latestProcessedEpoch, err := r.sync(epoch)
 		if err != nil {
 			log.Printf("sync run failed: %v", err)
 		}
 		epoch = latestProcessedEpoch
-		count++
 		time.Sleep(time.Second)
 	}
 }
 
-func (r *EventProcessor) sync(startEpoch uint32, count uint64) (uint32, error) {
-	log.Printf("Sync run: %d", count)
+func (r *EventProcessor) sync(startEpoch uint32) (uint32, error) {
 	ctx := context.Background()
 
 	start, end, epoch, err := r.calculateTickRange(ctx, startEpoch)
