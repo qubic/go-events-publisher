@@ -52,7 +52,7 @@ func (r *EventProcessor) sync(startEpoch uint32) (uint32, error) {
 	}
 
 	if start > end || start == 0 || end == 0 || epoch == 0 {
-		log.Printf("No ticks to process. Start: %d, end %d, epoch: %d", start, end, epoch)
+		log.Printf("No ticks to process.")
 	} else { // if start == end then process one tick
 		log.Printf("Processing ticks from %d to %d for epoch %d", start, end, epoch)
 		err = r.processTickEventsRange(ctx, epoch, start, end+1) // end exclusive
