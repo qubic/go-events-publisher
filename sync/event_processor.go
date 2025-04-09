@@ -84,13 +84,13 @@ func (r *EventProcessor) processTickEvents(ctx context.Context, tick uint32) err
 
 	log.Printf("Processing tick [%d].", tick)
 
-	beforeCall := time.Now().UnixMilli()
+	first := time.Now().UnixMilli()
 	tickEvents, err := r.eventClient.GetEvents(ctx, tick)
 	if err != nil {
 		return errors.Wrap(err, "getting events")
 	}
 
-	startProcessing := time.Now().UnixMilli()
+	second := time.Now().UnixMilli()
 	count, err := r.eventPublisher.ProcessTickEvents(ctx, tickEvents)
 	if err != nil {
 		return errors.Wrapf(err, "processing events")
@@ -99,9 +99,9 @@ func (r *EventProcessor) processTickEvents(ctx context.Context, tick uint32) err
 	if count > 0 {
 		r.syncMetrics.AddProcessedMessages(count)
 		end := time.Now().UnixMilli()
-		total := end - beforeCall
-		processing := end - startProcessing
-		log.Printf("Processed [%d] events in %d ms (publishing: %d ms => ~%d ms/event)", count, total, processing, processing/int64(count))
+		total := end - first
+		serviceCall := second - first
+		log.Printf("Processed [%d] events in %dms (read: %dms)", count, total, serviceCall)
 	}
 	return nil
 }

@@ -52,7 +52,7 @@ func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *event
 	var errs []error
 	for _, transactionEvents := range tickEvents.TxEvents {
 		transactionHash := transactionEvents.TxId
-		log.Printf("Processing events of transaction [%s]: [%d].", transactionHash, len(transactionEvents.Events))
+		// log.Printf("Processing events of transaction [%s]: [%d].", transactionHash, len(transactionEvents.Events))
 
 		for _, e := range transactionEvents.Events {
 
