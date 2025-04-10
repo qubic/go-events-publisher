@@ -1,7 +1,6 @@
 services:
   qubic-events-publisher:
-    image: ghcr.io/qubic/go-events-publisher:v0.1.2 # set correct version
-    # image: sha256:739355ab2365a632552aa43e9533c118cf7bc1775bcd1991672d336871e3eb9a
+    image: ghcr.io/qubic/go-events-publisher:latest # set correct version
     container_name: qubic-events-publisher
     ports:
       - "127.0.0.1:9999:9999"

@@ -17,7 +17,6 @@ For running the integration test you will have to set the correct environment va
 QUBIC_EVENTS_PUBLISHER_CLIENT_EVENT_API_URL="localhost:8003"
 ```
 
-
 ## Configuration options
 
 You can use command line properties or environment variables. Environment variables need to be prefixed with `QUBIC_EVENTS_PUBLISHER_`.
@@ -69,8 +68,3 @@ Folder for the embedded database. Stores metadata, like last processed tick per 
 --sync-start-epoch=
 `
 Epoch number to start syncing from.
-
-
-## Consume events
-
-`kcat -b localhost:9092 -t qubic-events`
