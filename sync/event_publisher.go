@@ -45,7 +45,7 @@ func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *event
 	tick := tickEvents.Tick
 	wg := sync.WaitGroup{}
 
-	var errs []error
+	var errs []error // TODO replace this with an channel. see data-publisher transactions publisher
 	for _, transactionEvents := range tickEvents.TxEvents {
 		transactionHash := transactionEvents.TxId
 		// log.Printf("Processing events of transaction [%s]: [%d].", transactionHash, len(transactionEvents.Events))
