@@ -23,7 +23,7 @@ func TestEventPublisher_ProcessTickEvents(t *testing.T) {
 
 	kafkaClient := &FakeKafkaClient{}
 
-	pub := EventPublisher{
+	pub := EventProducer{
 		kcl: kafkaClient,
 	}
 
@@ -65,7 +65,7 @@ func TestEventPublisher_ProcessTickEvents_GivenError_ThenReturn(t *testing.T) {
 		produceErr: errors.New("test error"),
 	}
 
-	pub := EventPublisher{
+	pub := EventProducer{
 		kcl: kafkaClient,
 	}
 
@@ -103,7 +103,7 @@ func TestEventPublisher_ProcessTickEvents_GivenNoEvent_ThenReturnZeroProcessed(t
 
 	kafkaClient := &FakeKafkaClient{}
 
-	pub := EventPublisher{
+	pub := EventProducer{
 		kcl: kafkaClient,
 	}
 

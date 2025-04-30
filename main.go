@@ -98,7 +98,7 @@ func run() error {
 	}
 	defer kcl.Close()
 
-	eventProcessor := sync.NewEventPublisher(kcl)
+	eventProcessor := sync.NewEventProducer(kcl)
 	eventReader := sync.NewEventProcessor(eventClient, eventProcessor, store, sync.NewMetrics(cfg.Broker.MetricsNamespace))
 	if cfg.Sync.Enabled {
 		go eventReader.SyncInLoop(cfg.Sync.StartEpoch)

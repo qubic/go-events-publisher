@@ -22,7 +22,7 @@ type Event struct {
 	EventData       string `json:"eventData"`
 }
 
-type Publisher interface {
+type Producer interface {
 	ProcessTickEvents(ctx context.Context, tickEvents *eventspb.TickEvents) (int, error)
 }
 
@@ -30,17 +30,17 @@ type KafkaClient interface {
 	Produce(ctx context.Context, r *kgo.Record, promise func(*kgo.Record, error))
 }
 
-type EventPublisher struct {
+type EventProducer struct {
 	kcl KafkaClient
 }
 
-func NewEventPublisher(client KafkaClient) *EventPublisher {
-	return &EventPublisher{
+func NewEventProducer(client KafkaClient) *EventProducer {
+	return &EventProducer{
 		kcl: client,
 	}
 }
 
-func (ep *EventPublisher) ProcessTickEvents(_ context.Context, tickEvents *eventspb.TickEvents) (int, error) {
+func (ep *EventProducer) ProcessTickEvents(_ context.Context, tickEvents *eventspb.TickEvents) (int, error) {
 	var sentEvents int
 	tick := tickEvents.Tick
 	wg := sync.WaitGroup{}

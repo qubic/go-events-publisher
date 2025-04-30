@@ -15,12 +15,12 @@ type Client interface {
 }
 type EventProcessor struct {
 	eventClient    Client
-	eventPublisher Publisher
+	eventPublisher Producer
 	dataStore      DataStore
 	syncMetrics    *Metrics
 }
 
-func NewEventProcessor(client Client, publisher Publisher, store DataStore, metrics *Metrics) *EventProcessor {
+func NewEventProcessor(client Client, publisher Producer, store DataStore, metrics *Metrics) *EventProcessor {
 	es := EventProcessor{
 		eventClient:    client,
 		eventPublisher: publisher,
