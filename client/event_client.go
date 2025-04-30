@@ -12,11 +12,6 @@ type IntegrationEventClient struct {
 	eventApi eventspb.EventsServiceClient
 }
 
-type TickInfo struct {
-	CurrentTick uint32
-	InitialTick uint32
-}
-
 type EventStatus struct {
 	Epoch     uint32
 	Tick      uint32
